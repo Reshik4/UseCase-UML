@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<title>Äänestyssovellus</title>
+<style>
+    html, body { height: 100%; margin: 0; background: linear-gradient(to bottom, #9e9d9dc7, #000000bd); }
+    body { display: flex; justify-content: center; align-items: center; font-family: Arial, sans-serif; }
+    .container { width: 90%; max-width: 600px; background-color:rgb(168, 168, 167); padding: 40px; box-shadow: 0 0 100px rgb(255, 0, 0); text-align: center; border-radius: 30px;}
+    .button { padding: 10px; margin-top: 5px; background-color: #0400ff; color: white; border: none; cursor: pointer; border-radius: 20px; }
+    .button:disabled { background-color: #ccc; }
+    .hidden { display: none; }
+    #userInfo { margin-top: 10px; }
+    input[type="text"], input[type="password"], textarea, select { width: 100%; padding: 8px; margin-top: 8px; }
+    h1 { color: rgb(0, 0, 0);
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Äänestyssovellus</h1>
+  <div id="userInfo" class="hidden"></div>
+  <div id="authContainer">
+    <button class="button" onclick="showLoginForm()">Kirjaudu</button>
+    <button class="button" onclick="showRegisterForm()">Rekisteröidy</button>
+  </div>
+  <div id="loginForm" class="hidden">
+    <input type="text" id="loginUsername" placeholder="Käyttäjätunnus">
+    <input type="password" id="loginPassword" placeholder="Salasana">
+    <button class="button" onclick="login()">Kirjaudu</button>
+  </div>
+  <div id="registerForm" class="hidden">
+    <input type="text" id="registerUsername" placeholder="Käyttäjätunnus">
+    <input type="password" id="registerPassword" placeholder="Salasana">
+    <select id="registerRole">
+      <option value="user">Käyttäjä</option>
+      <option value="admin">Ylläpitäjä</option>
+    </select>
+    <button class="button" onclick="register()">Rekisteröidy</button>
+  </div>
+  <div id="pollsContainer" class="hidden">
+    <!-- Äänestykset ladataan tähän -->
+  </div>
+  <div id="adminControls" class="hidden">
+    <h2>Luo uusi äänestys</h2>
+    <input type="text" id="newPollName" placeholder="Äänestyksen nimi">
+    <textarea id="newPollDescription" placeholder="Kuvaus"></textarea>
+    <button class="button" onclick="createPoll()">Luo äänestys</button>
+  </div>
+</div>
+
+<script>
+  const polls = [
+    { name: 'Javascript', description: 'Onko Javascript hyvä?', votes: { yes: 10, no: 5 }, deletable: true },
+    { name: 'Python', description: 'Onko Python hyvä?', votes: { yes: 13, no: 2 }, deletable: true }
+  ];
+  const users = [];
+  let currentUser = null;
+
+  function showLoginForm() {
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('userInfo').style.display = 'none';
+    document.getElementById('authContainer').style.display = 'block';
+  }
+
+  function showRegisterForm() {
+    document.getElementById('registerForm').style.display = 'block';
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('userInfo').style.display = 'none';
+    document.getElementById('authContainer').style.display = 'block';
+  }
+
+  function login() {
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    const user = users.find(u => u.username === username && u.password === password);
+    if (user) {
+      currentUser = user;
+      document.getElementById('authContainer').style.display = 'none';
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('userInfo').innerHTML = `Olet kirjautunut käyttäjällä '${currentUser.username}' <button class="button" onclick="logout()">Kirjaudu ulos</button>`;
+      document.getElementById('userInfo').style.display = 'block';
+      loadPolls();
+      if (user.role === 'admin') {
+        document.getElementById('adminControls').style.display = 'block';
+      } else {
+        document.getElementById('adminControls').style.display = 'none';
+      }
+    } else {
+      alert('Väärä käyttäjätunnus tai salasana');
+    }
+  }
+
+  function register() {
+    const username = document.getElementById('registerUsername').value;
+    const password = document.getElementById('registerPassword').value;
+    const role = document.getElementById('registerRole').value;
+    if (users.some(u => u.username === username)) {
+      alert('Käyttäjätunnus on jo käytössä');
+      return;
+    }
+    users.push({ username, password, role });
+    alert('Rekisteröinti onnistui, voit nyt kirjautua sisään');
+    showLoginForm();
+  }
+
+  function logout() {
+    currentUser = null;
+    document.getElementById('authContainer').style.display = 'block';
+    document.getElementById('userInfo').style.display = 'none';
+    document.getElementById('pollsContainer').style.display = 'none';
+    document.getElementById('adminControls').style.display = 'none';
+  }
+
+  function loadPolls() {
+    document.getElementById('pollsContainer').style.display = 'block';
+    const pollsHtml = polls.map((poll, index) => `
+      <div>
+        <h3>${poll.name}</h3>
+        <p>${poll.description}</p>
+        <button class="button" onclick="vote(${index}, 'yes')">Kyllä (${poll.votes.yes})</button>
+        <button class="button" onclick="vote(${index}, 'no')">Ei (${poll.votes.no})</button>
+        ${currentUser.role === 'admin' && poll.deletable ? `<button class="button" onclick="deletePoll(${index})">Poista äänestys</button>` : ''}
+      </div>
+    `).join('');
+    document.getElementById('pollsContainer').innerHTML = pollsHtml;
+  }
+
+  function createPoll() {
+    const name = document.getElementById('newPollName').value;
+    const description = document.getElementById('newPollDescription').value;
+    polls.push({ name, description, votes: { yes: 0, no: 0 }, deletable: true });
+    loadPolls();
+  }
+
+  function deletePoll(index) {
+    polls.splice(index, 1);
+    loadPolls();
+  }
+
+  function vote(index, vote) {
+    polls[index].votes[vote]++;
+    loadPolls();
+  }
+</script>
+</body>
+</html>
